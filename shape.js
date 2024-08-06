@@ -46,28 +46,6 @@ export class Shape {
     this.allow_rot = false;
   }
 
-  static rot(matrix){
-    let l = 0;
-    let r = matrix.length - 1;
-
-    while (l < r){
-      for (let i = 0; i < r - l; i++){
-        let _top = l; // top is a regular keyword
-        let bot = r;
-
-        let top_l = matrix[_top][l + i];
-        matrix[_top][l + i] = matrix[bot - i][l];
-        matrix[bot - i][l] = matrix[bot][ r - i];
-        matrix[bot][r - i] = matrix[_top + i][r];
-        matrix[_top + i][r] = top_l;
-      }   
-      r--;
-      l++;
-    }
-    console.table(matrix);
-  }
-
-
   get_lowest_block(){
     let lowest = this.blocks[0]; 
     this.blocks.forEach((block) => {
@@ -163,11 +141,15 @@ export class Shape {
   rotate(table, ctx, clockwise = true){
     if (this.type == 'O') return; 
 
-    if (this.type == 'I') {
-      this.unload_from_table(table);
+    this.unload_from_table(table);
 
+    if (this.type == 'I') {
       let cb = this.blocks[2];
       let new_y, new_x;
+
+      // keep shape inside borders when rotating next to borders
+      if (cb.y == 0) cb.y++;
+      else if (cb.y == ROWS - 1) cb.y -= 1; 
 
       switch(this.rot_state){
         case 1:
@@ -206,11 +188,13 @@ export class Shape {
     let matrix_start = (this.rot_state - 1) * matrix_size + (clockwise ? 0 : matrix_size * 4);
     let rot_matrix = this.rot_matrices.substring(matrix_start, matrix_start + matrix_size);
 
-    this.unload_from_table(table);
-
     let cb_idx = this.rot_state < 3 ? 1 : 2;
     const cb = this.blocks.splice(cb_idx, 1)[0]; 
     let block_idx = 0;
+
+    // keep shape inside borders when rotating next to borders
+    if (cb.y == 0) cb.y ++;
+    else if (cb.y == ROWS - 1) cb.y--; 
 
     for (let i = 0; i < matrix_size; i++){
       if (rot_matrix[i] == '1'){
