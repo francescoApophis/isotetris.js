@@ -98,16 +98,6 @@ function animate(){
   }
 }
 
-
-
-
-// const matrix_2 = [
-  // [0, 1, 0], 
-  // [0, 1, 0], 
-  // [1, 1, 0], 
-// ];
-
-
 document.addEventListener('keydown', (e)=>{
   switch(e.key){
     case ' ': 
@@ -126,8 +116,6 @@ document.addEventListener('keydown', (e)=>{
     case 'd':
       curr_shape.move_right = true;
       break;
-    case 'z':
-      Shape.rot(matrix_2);
   }
 })
 
