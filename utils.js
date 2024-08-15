@@ -27,6 +27,40 @@ export function render_table(table, ctx, textures){
 }
 
 
+export function render_isometric_table(table, ctx, iso_textures){
+  let rows = COLS;
+  let cols = ROWS;
+
+  let iso_block_width = 243;
+  let iso_block_height = 282;
+  let iso_block_top_left_most_vertex = 69;
+  let res = 6;
+
+  for (let x = rows; x >= 0; x--){
+    for (let y = 0; y < cols; y++){
+
+      if (table[x * cols + y] != 0 && table[x * cols + y] !== undefined){
+        ctx.drawImage(
+          iso_textures, 
+          ((table[x * cols + y] - 1) % 7) * iso_block_width, 
+          0,
+
+          iso_block_width,
+          iso_block_height,
+
+          y * (iso_block_width / 2) / res,
+          (x * (iso_block_height / 2) + iso_block_top_left_most_vertex * y) / res - 50,
+
+          iso_block_width / res,
+          iso_block_height / res,
+        );
+      }
+    }
+  }
+}
+
+
+
 // for debug mode 
 export function draw_table(table, ctx){
   ctx.fillStyle = 'black';
