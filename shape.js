@@ -5,7 +5,6 @@ export class Block {
   constructor(x, y, color){
     this.x = x;
     this.y = y;
-    this.color = color; 
   }
 
   get_table_value(table, x_offset = 0, y_offset = 0){
@@ -30,20 +29,12 @@ export class Shape {
   }
 
   constructor(type, color, cbx, cby, table_value){
-    this.type = type;
-    this.color = color;
-
-    let blocks_and_mats = Shape.new_blocks_from_type(type, color, cbx, cby);
-    this.blocks = blocks_and_mats[0];
-    this.rot_matrices = blocks_and_mats[1]; // contains matrices for both clockwise (1st half) and counter clockwise (2nd half)
-    
+    this.type = type.toLowerCase();
+    this.rot_matrices = Shape.rot_matrices_from_type(this.type);
+    this.rot_state = 0; // 4 states: 0...3
+    this.blocks = Shape.new_blocks_from_type(type, this.rot_state, cbx, cby);
     this.docked = false;
     this.table_value = table_value;
-    this.rot_state = 2;
-
-    this.move_left = false;
-    this.move_right = false;
-    this.allow_rot = false;
   }
 
   get_lowest_block(){
@@ -137,13 +128,19 @@ export class Shape {
     this.load_on_table(table);
   }
 
+  get_next_rot_state(clockwise){
+    return !clockwise ? 
+      (this.rot_state > 0 ? this.rot_state - 1 : 3): 
+      (this.rot_state < 3 ? this.rot_state + 1 : 0);
+  }
+
 
   rotate(table, ctx, clockwise = true){
     if (this.type == 'O') return; 
 
     this.unload_from_table(table);
 
-    if (this.type == 'I') {
+    if (this.type == 'i') {
       let cb = this.blocks[2];
       let new_y, new_x;
 
@@ -152,19 +149,19 @@ export class Shape {
       else if (cb.y == ROWS - 1) cb.y -= 1; 
 
       switch(this.rot_state){
-        case 1:
+        case 0:
           new_x = cb.x - 1;
           new_y = cb.y - 1;
           break;
-        case 2:
+        case 1:
           new_y = cb.y;
           new_x = cb.x - 1; 
           break;
-        case 3:
+        case 2:
           new_x = cb.x;
           new_y = cb.y - 2;
           break;
-        case 4:
+        case 3:
           new_y = cb.y - 1;
           new_x = cb.x - 2;
           break;
@@ -173,31 +170,33 @@ export class Shape {
       for (let b of this.blocks){
         b.x = new_x;
         b.y = new_y;
-
-        if (this.rot_state == 1 || this.rot_state == 3) new_y++;
+        if (this.rot_state == 0 || this.rot_state == 2) new_y++;
         else new_x++;
       }
       
-      this.rot_state = this.rot_state < 4 ? this.rot_state +1 : 1;
+      this.rot_state = this.get_next_rot_state(clockwise);
       this.load_on_table(table);
       return;
     }
 
     let matrix_size  = 9; 
     let matrix_width = 3;
-    let matrix_start = (this.rot_state - 1) * matrix_size + (clockwise ? 0 : matrix_size * 4);
-    let rot_matrix = this.rot_matrices.substring(matrix_start, matrix_start + matrix_size);
+    let next_rot_state = this.get_next_rot_state(clockwise);
+    let matrix_start = next_rot_state * matrix_size;
 
-    let cb_idx = this.rot_state < 3 ? 1 : 2;
+    let cb_idx = this.rot_state < 2 ? 2 : 1;
     const cb = this.blocks.splice(cb_idx, 1)[0]; 
     let block_idx = 0;
+
+    let smaller_block_size = BLOCK_SIZE - 5;
+
 
     // keep shape inside borders when rotating next to borders
     if (cb.y == 0) cb.y ++;
     else if (cb.y == ROWS - 1) cb.y--; 
 
     for (let i = 0; i < matrix_size; i++){
-      if (rot_matrix[i] == '1'){
+      if (this.rot_matrices[matrix_start + i] == '1'){
         let row = Math.floor(i / matrix_width); 
         let col = i % matrix_width; 
 
@@ -214,102 +213,61 @@ export class Shape {
       }
     }
 
-    this.rot_state = this.rot_state < 4 ? this.rot_state + 1 : 1;
-    this.blocks.splice( this.rot_state < 3 ? 1 : 2, 0, cb);
+    this.rot_state = next_rot_state;
+    this.blocks.splice(this.rot_state < 2 ? 2 : 1, 0, cb);
     this.load_on_table(table);
   }
 
-  
-  // DON'T TOUCH THE STRINGS
-  static new_blocks_from_type(type, color, cbx, cby){
+  static rot_matrices_from_type(type){
     switch(type){
-      case 'I':
-        return [
-          [
-            new Block(cbx, cby - 1, this.color),
-            new Block(cbx, cby, this.color),
-            new Block(cbx, cby + 1, this.color),
-            new Block(cbx, cby + 2, this.color),
-          ],
-
-           '01000100010001000000111100000000001000100010001000000000111100000100010001000100000000001111000000100010001000100000111100000000'
-        ];
-
-      case 'J':
-        return [
-          [
-            new Block(cbx, cby - 1, color),
-            new Block(cbx, cby, color),
-            new Block(cbx, cby + 1, color),
-            new Block(cbx + 1, cby + 1, color),
-          ],
-
-          // '010010110100111000011010010000111001',
-          // '010010110000111001011010010100111000'
-          '010010110100111000011010010000111001010010110000111001011010010100111000'
-        ];
-
-      case 'L':
-         return [
-           [
-             new Block(cbx, cby + 1, this.color),
-             new Block(cbx, cby, this.color),
-             new Block(cbx, cby - 1, this.color), 
-             new Block(cbx + 1 , cby - 1, this.color),
-           ],
-
-           '010010011000111100110010010001111000010010011001111000110010010000111100',
-         ];
-
-      case 'O':
-        return [ 
-          [
-            new Block(cbx, cby + 1, this.color),
-            new Block(cbx, cby, this.color),
-            new Block(cbx + 1, cby, this.color), 
-            new Block(cbx + 1 , cby + 1, this.color),
-          ],
-
-          '' // no need to rotate the square 
-        ];
-
-      case 'S':
-        return [ 
-          [
-
-            new Block(cbx, cby + 1, this.color),
-            new Block(cbx, cby, this.color),
-            new Block(cbx + 1 , cby, this.color), 
-            new Block(cbx + 1 , cby - 1, this.color),
-          ],
-
-           '011110000010011001000011110100110010011110000100110010000011110010011001'
-        ];
-
-      case 'Z':
-        return [
-          [
-            new Block(cbx, cby - 1, this.color),
-            new Block(cbx, cby, this.color),
-            new Block(cbx + 1 , cby, this.color), 
-            new Block(cbx + 1 , cby + 1, this.color),
-          ],
-
-          '110011000001011010000110011010110100110011000010110100000110011001011010'
-        ];
-        break;
-
-      case 'T':
-        return [
-          [
-            new Block(cbx - 1, cby, this.color),
-            new Block(cbx, cby, this.color),
-            new Block(cbx, cby - 1, this.color), 
-            new Block(cbx, cby + 1, this.color),
-          ],
-          '010111000010011010000111010010110010010111000010110010000111010010011010'
-        ];
-        break;
+      case 'o':
+        return '110110000';
+      case 'i':
+        return '0100010001000100000011110000000000100010001000100000000011110000';
+      case 'j':
+        return '100111000011010010000111001010010110';
+      case 'l':
+        return '001111000010010011000111100110010010';
+      case 's':
+        return '010011001000011110100110010011110000';
+      case 'z':
+        return '110011000001011010000110011010110100'; 
+      case 't':
+        return '010111000010011010000111010010110010';
+      default:
+        throw new Error(`Shape type '${type}' is not valid`);
     }
+  }
+
+
+  static new_blocks_from_type(type, rot_state, cbx, cby){
+    type = type.toLowerCase();
+    let matrix_size  = type == 'i' ? 16 : 9; 
+    let matrix_width = type == 'i' ? 4 : 3;
+    let matrix_start = rot_state * matrix_size;
+    let rot_matrices = Shape.rot_matrices_from_type(type);
+
+    const blocks = [];
+    for (let i = 0; i < matrix_size; i++){
+      if (rot_matrices[matrix_start + i] == '1'){
+        let row = Math.floor(i / matrix_width); 
+        let col = i % matrix_width; 
+
+        let new_block = new Block(0, 0);
+
+        if (row == 0)  new_block.x = cbx - 1;
+        else if (row == 1) new_block.x = cbx;
+        else if (type == 'i' && row == 2) new_block.x = cbx + 2;
+        else new_block.x = cbx + 1;
+        
+        if (col == 0) new_block.y = cby - 1;
+        else if (col == 1) new_block.y = cby;
+        else if (type == 'i' && col == 2) new_block.y = cby + 2;
+        else new_block.y = cby + 1;
+
+        blocks.push(new_block);
+      }
+    }
+    return blocks;
   }
 }
