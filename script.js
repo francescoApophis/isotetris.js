@@ -25,7 +25,7 @@ iso_btn.onclick = () => game.iso_mode = !game.iso_mode;
 document.addEventListener('keydown', (e)=>{
   switch(e.key){
     case ' ': 
-      game.pause = !game.pause;
+      game.pause_game = !game.pause_game;
       break;
     case 's':
       game.move_down =  true;
