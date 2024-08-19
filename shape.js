@@ -81,13 +81,15 @@ export class Shape {
 
   move_hor(left, table){
     if (this.docked) return;
-    
-    let y_offset = left? -1 : 1;
-    let mhb = this.get_most_hor_block(left);
 
-    if (!(this.can_drop(mhb.get_table_value(table, 0, y_offset)) && mhb.in_hor_boundaries())){
+    let y_offset = left? -1 : 1;
+    let most_hor_block = this.get_most_hor_block(left);
+    let idx_new_most_hor_block = most_hor_block.x  * ROWS + (most_hor_block.y + y_offset);
+
+    // don't move the shape if the offset brings to a new row
+    if (Math.floor(idx_new_most_hor_block / ROWS) !== most_hor_block.x) {
       return;
-    } 
+    }
 
     for (let i = 0; i < this.blocks.length; i++){
       let block = this.blocks[i];
@@ -238,7 +240,6 @@ export class Shape {
         throw new Error(`Shape type '${type}' is not valid`);
     }
   }
-
 
   static new_blocks_from_type(type, rot_state, cbx, cby){
     type = type.toLowerCase();
