@@ -1,6 +1,5 @@
 import {Shape} from "./shape.js";
-import {FPS, FPS_INTERVAL, LEVEL_FPS, LEVEL_FPS_INTERVAL, C_W, C_H, ROWS, COLS, BLOCK_SIZE} from "./settings.js";
-// import {render_isometric_table} from "./utils.js";
+import {FPS, FPS_INTERVAL, LEVEL_FPS, LEVEL_FPS_INTERVAL, C_W, C_H, ROWS, COLS, BLOCK_SIZE, DEBUG_FONT, DEBUG_FONT_SIZE, PAUSE_FONT, PAUSE_FONT_SIZE} from "./settings.js";
 
 export class Game {
   constructor(ctx, canvas, pixel_art_txr, isometric_txr){
@@ -62,8 +61,6 @@ export class Game {
   render(){
     this.ctx.clearRect(0, 0, C_W, C_H);
 
-    if (this.pause_game) this.render_pause();
-
     if (this.debug_mode) {
       this.render_debug_mode();
     } else if (this.iso_mode) {
@@ -71,10 +68,15 @@ export class Game {
     } else {
       this.render_pixel_art_mode();
     }
+
+    if (this.pause_game) {
+      this.render_pause();
+    }
   }
 
 
   render_debug_mode(){
+    this.ctx.font = `${DEBUG_FONT_SIZE}px ${DEBUG_FONT}`;
     this.ctx.fillStyle = 'black';
     this.ctx.globalAlpha = 1;
     let table_offset = 25;
@@ -166,14 +168,11 @@ export class Game {
     }
   }
 
-
   visualize_shape_rot_matrices(){
     let m = this.current_shape.rot_matrices;
-
     let a = 50;
     
     for (let j = 0; j < 4; j++){
-
       a += 150;
       for (let i = 0; i < 9; i++){
         let x = i % 3;
@@ -186,18 +185,14 @@ export class Game {
     }
   }
 
-
   render_pause(){
-    let font_size = 20;
+    let font_size = 25;
     this.ctx.fillStyle = 'rgba(0,0,0, 0.2)';
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     this.ctx.fillStyle = 'white';
-    this.ctx.font = `{font_size}px Arial`;
-    this.ctx.fillText('Pause', this.canvas.width - font_size , this.canvas.height);
+    this.ctx.font = `${PAUSE_FONT_SIZE}px ${DEBUG_FONT}`;
+    this.ctx.fillText('Pause', C_W / 2 - 25 * 5 * 0.25 , C_H / 2);
   }
-
-
-
 
   clear_row(){
     let last_cleared_row = -1;
