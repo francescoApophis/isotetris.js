@@ -1,8 +1,8 @@
-import {ROWS, BLOCK_SIZE, SHAPE_TYPES} from "./settings.js";
+import {ROWS, COLS, BLOCK_SIZE, SHAPE_TYPES} from "./settings.js";
 
 
 export class Block {
-  constructor(x, y, color){
+  constructor(x, y){
     this.x = x;
     this.y = y;
   }
@@ -18,6 +18,15 @@ export class Block {
 
 
 export class Shape {
+  constructor(type, color, cbx, cby, table_value){
+    this.type = type;
+    this.rot_matrices = Shape.rot_matrices_from_type(type);
+    this.rot_state = 0; // 4 states: 0...3
+    this.blocks = Shape.new_blocks_from_type(type, this.rot_state, cbx, cby);
+    this.docked = false;
+    this.table_value = table_value;
+  }
+
   static new_rand(curr_shape_num){
     return new Shape(
       SHAPE_TYPES[Math.floor(Math.random() * SHAPE_TYPES.length)],
@@ -26,15 +35,6 @@ export class Shape {
       Math.floor(Math.random() * (ROWS - 3 - 3 + 1)) + 3,
       curr_shape_num,
     ); 
-  }
-
-  constructor(type, color, cbx, cby, table_value){
-    this.type = type.toLowerCase();
-    this.rot_matrices = Shape.rot_matrices_from_type(this.type);
-    this.rot_state = 0; // 4 states: 0...3
-    this.blocks = Shape.new_blocks_from_type(type, this.rot_state, cbx, cby);
-    this.docked = false;
-    this.table_value = table_value;
   }
 
   get_lowest_block(){
@@ -137,114 +137,105 @@ export class Shape {
   }
 
 
-  rotate(table, ctx, clockwise = true){
-    if (this.type == 'O') return; 
-
-    this.unload_from_table(table);
-
-    if (this.type == 'i') {
-      let cb = this.blocks[2];
-      let new_y, new_x;
-
-      // keep shape inside borders when rotating next to borders
-      if (cb.y == 0) cb.y++;
-      else if (cb.y == ROWS - 1) cb.y -= 1; 
-
-      switch(this.rot_state){
-        case 0:
-          new_x = cb.x - 1;
-          new_y = cb.y - 1;
-          break;
-        case 1:
-          new_y = cb.y;
-          new_x = cb.x - 1; 
-          break;
-        case 2:
-          new_x = cb.x;
-          new_y = cb.y - 2;
-          break;
-        case 3:
-          new_y = cb.y - 1;
-          new_x = cb.x - 2;
-          break;
-      }  
-
-      for (let b of this.blocks){
-        b.x = new_x;
-        b.y = new_y;
-        if (this.rot_state == 0 || this.rot_state == 2) new_y++;
-        else new_x++;
-      }
-      
-      this.rot_state = this.get_next_rot_state(clockwise);
-      this.load_on_table(table);
-      return;
+  // not working 
+  handle_rot_next_to_hor_bounds(next_rot_state, center_block_y){
+    if (this.type == 'I' && (next_rot_state == 1 || next_rot_state == 3)){
+      if (center_block_y == 0) return center_block_y + 2;
+      if (center_block_y == ROWS - 1) return center_block_y - 2;
     }
 
-    let matrix_size  = 9; 
-    let matrix_width = 3;
-    let next_rot_state = this.get_next_rot_state(clockwise);
-    let matrix_start = next_rot_state * matrix_size;
+    if (center_block_y == 0) return center_block_y + 1;
+    if (center_block_y == ROWS - 1) return center_block_y - 1;
 
-    let cb_idx = this.rot_state < 2 ? 2 : 1;
-    const cb = this.blocks.splice(cb_idx, 1)[0]; 
-    let block_idx = 0;
-
-    let smaller_block_size = BLOCK_SIZE - 5;
-
-
-    // keep shape inside borders when rotating next to borders
-    if (cb.y == 0) cb.y ++;
-    else if (cb.y == ROWS - 1) cb.y--; 
-
-    for (let i = 0; i < matrix_size; i++){
-      if (this.rot_matrices[matrix_start + i] == '1'){
-        let row = Math.floor(i / matrix_width); 
-        let col = i % matrix_width; 
-
-        if (row == 1 && col == 1) continue;
-
-        if (row == 0) this.blocks[block_idx].x = cb.x - 1;
-        else if (row == 1) this.blocks[block_idx].x = cb.x;
-        else this.blocks[block_idx].x = cb.x + 1;
-        
-        if (col == 0) this.blocks[block_idx].y = cb.y - 1;
-        else if (col == 1) this.blocks[block_idx].y = cb.y;
-        else this.blocks[block_idx].y = cb.y + 1;
-        block_idx++;
-      }
-    }
-
-    this.rot_state = next_rot_state;
-    this.blocks.splice(this.rot_state < 2 ? 2 : 1, 0, cb);
-    this.load_on_table(table);
+    return center_block_y;
   }
 
+  rotate(table, ctx, clockwise){
+    /* Based on the rototion state and the shape, it uses one of the shape's block 
+     * as an 'anchor point'. for 'I' shape : 2nd block, 
+     * other shapes : either the 2nd or the 3rd, depending on the rot_state.
+      *
+      * From there it loops through the rotation matrix and uses the coordinates of an 
+      * occupied cell as offset from the matrix's center block to determine the 
+      * blocks's new positions. The offset will be then added to the center block. */
+
+    if (this.type == 'O') return;
+    
+    // the 'I' shape needs a 4x4 matrix
+    let matrix_size  = this.type == 'I' ? 16 : 9; 
+    let matrix_width = this.type == 'I' ? 4 : 3;
+    let next_rot_state = this.get_next_rot_state(clockwise);
+    let matrix_start = next_rot_state * matrix_size;
+    this.unload_from_table(table);
+
+    let center_block_idx = this.type == 'I' ? 
+      this.rot_state < 2 ? 1 : 2 : 
+      this.rot_state < 2 ? 2 : 1;
+    let center_block_x = this.blocks[center_block_idx].x;
+    let center_block_y = this.handle_rot_next_to_hor_bounds(
+      next_rot_state, this.blocks[center_block_idx].y
+    );
+
+    // make sure the 'I' shape won't go away while rotating, i'll fix it later 
+    if (this.type == 'I'){
+      if (clockwise){
+        if (next_rot_state == 3 || next_rot_state == 0){
+          center_block_y--;
+          center_block_x--;
+        }
+      } else{
+        if (next_rot_state == 2 || next_rot_state == 1){
+          center_block_y--;
+          center_block_x--;
+        }
+      }
+    }
+
+    let new_center_block_idx;
+    let curr_block_idx = 0;
+    for (let i = 0; i < matrix_size; i++){
+      if (this.rot_matrices[matrix_start + i] == '1'){
+        let matrix_row = Math.floor(i / matrix_width);
+        let matrix_col = i % matrix_width;
+
+        if (this.type != 'I' && matrix_row == 1 && matrix_col == 1){
+          new_center_block_idx = curr_block_idx; 
+        }
+
+        this.blocks[curr_block_idx].x = center_block_x + matrix_row - 1;
+        this.blocks[curr_block_idx].y = center_block_y + matrix_col - 1;
+        curr_block_idx++;
+      }
+    }
+    // Put the center block in the right place 
+    if (this.type != 'I'){
+      const new_center_block = this.blocks[new_center_block_idx];
+      this.blocks[new_center_block_idx] = this.blocks[next_rot_state < 2 ? 2 : 1];
+      this.blocks[next_rot_state < 2 ? 2 : 1] = new_center_block;
+    }
+    this.rot_state = next_rot_state;
+    this.load_on_table(table);
+  }
+  
+
   static rot_matrices_from_type(type){
+    // DO NOT TOUCH THE STRINGS!!!!!!!
     switch(type){
-      case 'o':
-        return '110110000';
-      case 'i':
-        return '0100010001000100000011110000000000100010001000100000000011110000';
-      case 'j':
-        return '100111000011010010000111001010010110';
-      case 'l':
-        return '001111000010010011000111100110010010';
-      case 's':
-        return '010011001000011110100110010011110000';
-      case 'z':
-        return '110011000001011010000110011010110100'; 
-      case 't':
-        return '010111000010011010000111010010110010';
+      case 'O': return '110110000';
+      case 'I': return '0100010001000100000011110000000000100010001000100000000011110000';
+      case 'J': return '100111000011010010000111001010010110';
+      case 'L': return '001111000010010011000111100110010010';
+      case 'S': return '010011001000011110100110010011110000';
+      case 'Z': return '110011000001011010000110011010110100'; 
+      case 'T': return '010111000010011010000111010010110010';
       default:
         throw new Error(`Shape type '${type}' is not valid`);
     }
   }
 
   static new_blocks_from_type(type, rot_state, cbx, cby){
-    type = type.toLowerCase();
-    let matrix_size  = type == 'i' ? 16 : 9; 
-    let matrix_width = type == 'i' ? 4 : 3;
+    let matrix_size  = type == 'I' ? 16 : 9; 
+    let matrix_width = type == 'I' ? 4 : 3;
     let matrix_start = rot_state * matrix_size;
     let rot_matrices = Shape.rot_matrices_from_type(type);
 
@@ -258,12 +249,12 @@ export class Shape {
 
         if (row == 0)  new_block.x = cbx - 1;
         else if (row == 1) new_block.x = cbx;
-        else if (type == 'i' && row == 2) new_block.x = cbx + 2;
+        else if (type == 'I' && row == 2) new_block.x = cbx + 2;
         else new_block.x = cbx + 1;
         
         if (col == 0) new_block.y = cby - 1;
         else if (col == 1) new_block.y = cby;
-        else if (type == 'i' && col == 2) new_block.y = cby + 2;
+        else if (type == 'I' && col == 2) new_block.y = cby + 2;
         else new_block.y = cby + 1;
 
         blocks.push(new_block);
@@ -272,3 +263,20 @@ export class Shape {
     return blocks;
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
