@@ -155,7 +155,7 @@ export class Game {
     let iso_block_img_height = 300;
     let iso_block_img_top_left_vertex = 70;
     let res = 7;
-    
+
     for (let x = rows; x >= 0; x--){
       for (let y = 0; y < cols; y++){
         let cell = this.table[x * cols + y];
@@ -163,10 +163,10 @@ export class Game {
         if ( cell == 0 || cell === undefined) continue;
 
         this.ctx.drawImage(
-          this.isometric_txr, 
+          this.isometric_txr,
           ((cell - 1) % 7) * iso_block_img_width, 
           0,
-          iso_block_img_width,
+          iso_block_img_width, 
           iso_block_img_height,
           y * (iso_block_img_width / 2) / res + 25,
           (x * (iso_block_img_height / 2) + iso_block_img_top_left_vertex * y) / res - 40,

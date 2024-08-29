@@ -1,6 +1,5 @@
 import {ROWS, COLS, BLOCK_SIZE, SHAPE_TYPES} from "./settings.js";
 
-
 export class Block {
   constructor(x, y){
     this.x = x;
