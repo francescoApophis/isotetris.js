@@ -20,7 +20,7 @@ export class Shape {
   constructor(type, color, cbx, cby, table_value){
     this.type = type;
     this.rot_matrices = Shape.rot_matrices_from_type(type);
-    this.rot_state = 0; // 4 states: 0...3
+    this.rot_state = type != 'I'? 0 : 1; // 4 states: 0...3
     this.blocks = Shape.new_blocks_from_type(type, this.rot_state, cbx, cby);
     this.docked = false;
     this.table_value = table_value;
@@ -177,16 +177,10 @@ export class Shape {
 
     // make sure the 'I' shape won't go away while rotating, i'll fix it later 
     if (this.type == 'I'){
-      if (clockwise){
-        if (next_rot_state == 3 || next_rot_state == 0){
-          center_block_y--;
-          center_block_x--;
-        }
-      } else{
-        if (next_rot_state == 2 || next_rot_state == 1){
-          center_block_y--;
-          center_block_x--;
-        }
+      if (clockwise && (next_rot_state == 3 || next_rot_state == 0)
+        || !clockwise && (next_rot_state == 2 || next_rot_state == 1)){
+        center_block_y--;
+        center_block_x--;
       }
     }
 
@@ -220,8 +214,8 @@ export class Shape {
   static rot_matrices_from_type(type){
     // DO NOT TOUCH THE STRINGS!!!!!!!
     switch(type){
-      case 'O': return '110110000';
       case 'I': return '0100010001000100000011110000000000100010001000100000000011110000';
+      case 'O': return '110110000';
       case 'J': return '100111000011010010000111001010010110';
       case 'L': return '001111000010010011000111100110010010';
       case 'S': return '010011001000011110100110010011110000';
@@ -241,20 +235,12 @@ export class Shape {
     const blocks = [];
     for (let i = 0; i < matrix_size; i++){
       if (rot_matrices[matrix_start + i] == '1'){
-        let row = Math.floor(i / matrix_width); 
-        let col = i % matrix_width; 
+        let matrix_row = Math.floor(i / matrix_width); 
+        let matrix_col = i % matrix_width; 
 
         let new_block = new Block(0, 0);
-
-        if (row == 0)  new_block.x = cbx - 1;
-        else if (row == 1) new_block.x = cbx;
-        else if (type == 'I' && row == 2) new_block.x = cbx + 2;
-        else new_block.x = cbx + 1;
-        
-        if (col == 0) new_block.y = cby - 1;
-        else if (col == 1) new_block.y = cby;
-        else if (type == 'I' && col == 2) new_block.y = cby + 2;
-        else new_block.y = cby + 1;
+        new_block.x = cbx + matrix_row - 1;
+        new_block.y = cby + matrix_col - 1;
 
         blocks.push(new_block);
       }
