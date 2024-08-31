@@ -1,17 +1,11 @@
 
 body {
   background-color: #6f54b8;
-  border: 1px solid black;
   display: flex;
   flex-direction: column;
   align-items: center;
   overflow:hidden;
 }
-
-canvas {
-  border: 1px solid black;
-}
-
 
 .btn-container{
   display: flex;
