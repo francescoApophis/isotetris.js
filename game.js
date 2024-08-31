@@ -3,17 +3,13 @@ import {FPS, FPS_INTERVAL, LEVEL_FPS, LEVEL_FPS_INTERVAL, C_W, C_H, ROWS, COLS, 
 
 
 export class Game {
-  constructor(ctx, canvas, pixel_art_txr, isometric_txr, ctx2 = undefined, ctx3 = undefined){
+  constructor(ctx, canvas, textures){
     this.ctx = ctx;
-    // this two ctxs are for debugging the table at different states at the same time
-    this.ctx2 = ctx2; 
-    this.ctx3 = ctx3;
     this.canvas = canvas;
-    this.pixel_art_txr = pixel_art_txr;
-    this.isometric_txr = isometric_txr;
 
+    this.textures   = textures;
     this.pause_game = false;
-    this.iso_mode = true;
+    this.iso_mode   = true;
     this.debug_mode = false;
 
     this.move_left    = false;
@@ -105,6 +101,8 @@ export class Game {
 
 
   render_debug_mode(ctx){
+    // it takes a ctx arg because sometimes to debug I might use 
+    // multiple ctxs at the same time to see the table at different 'stages' 
     ctx.font = `${DEBUG_FONT_SIZE}px ${DEBUG_FONT}`;
     ctx.fillStyle = 'black';
     ctx.globalAlpha = 1;
@@ -124,65 +122,52 @@ export class Game {
 
       ctx.fillStyle = 'black';
       ctx.strokeRect(x + table_offset, y + table_offset, smaller_block_size, smaller_block_size);
-      ctx.fillText(this.table[i], x + font_offset - 2.5, y + font_offset + 5); // cell value
+      // cell value
+      ctx.fillText(this.table[i], x + font_offset - 2.5, y + font_offset + 5); 
 
+      // ROWS
       if (y / smaller_block_size == 0){
-        ctx.fillText(i, x + font_offset, y + table_offset - 5); // ROWS
+        ctx.fillText(i, x + font_offset, y + table_offset - 5); 
       }
 
+      // COLS
       if (x / smaller_block_size == 0){
-        ctx.fillText(i / 10, x + table_offset - 15, y + font_offset + 5); // COLS
+        ctx.fillText(i / 10, x + table_offset - 15, y + font_offset + 5); 
       }
     }
   }
 
   render_isometric_mode(){
     this.ctx.fillStyle = '#6f54b8';
-    this.ctx.globalAlpha = 1;
     this.ctx.fillRect(0, 0, 250, 550);
 
-    let rows = COLS;
-    let cols = ROWS;
-
-    // Isometric Block iso-asset3.png
-    // let ib_width = 243; 
-    // let ib_height = 282;
-    // let ib_top_left_vertex = 69;
-    // let res = 6;
-    //
-
-    let iso_block_img_width = 250; 
-    let iso_block_img_height = 300;
-    let iso_block_img_top_left_vertex = 70;
-    let res = 7;
-
-    for (let x = rows; x >= 0; x--){
-      for (let y = 0; y < cols; y++){
-        let cell = this.table[x * cols + y];
+    const txtr = this.textures.iso4;
+    for (let y = COLS; y >= 0; y--){
+      for (let x = 0; x < ROWS ; x++){
+        let cell = this.table[y * ROWS+  x];
 
         if ( cell == 0 || cell === undefined) continue;
 
         this.ctx.drawImage(
-          this.isometric_txr,
-          ((cell - 1) % 7) * iso_block_img_width, 
+          txtr.img,
+          ((cell - 1) % 7) * txtr.crop_w, 
           0,
-          iso_block_img_width, 
-          iso_block_img_height,
-          y * (iso_block_img_width / 2) / res + 25,
-          (x * (iso_block_img_height / 2) + iso_block_img_top_left_vertex * y) / res - 40,
-          iso_block_img_width / res,
-          iso_block_img_height / res,
+          txtr.crop_w, 
+          txtr.crop_h,
+          x * (txtr.crop_w/ 2) / txtr.resize + 35,
+          (y * (txtr.crop_h / 2) + txtr.tlm_vertex * x) / txtr.resize + 20,
+          txtr.crop_w / txtr.resize,
+          txtr.crop_h / txtr.resize,
         );
       }
     }
   }
 
   render_pixel_art_mode(){
-    let table_offset = 0;
     this.ctx.fillStyle = 'rgb(38, 48, 57)';
-    this.ctx.globalAlpha = 1;
-    this.ctx.fillRect(table_offset, table_offset, ROWS * BLOCK_SIZE, COLS * BLOCK_SIZE);
-    
+    this.ctx.fillRect(0, 0, ROWS * BLOCK_SIZE, COLS * BLOCK_SIZE);
+
+    const txtr = this.textures.pixel;
     for (let i = 0; i < ROWS * COLS; i++){
       if (this.table[i] == 0) continue;
 
@@ -190,11 +175,11 @@ export class Game {
       let y = (i % (ROWS));
 
       this.ctx.drawImage(
-        this.pixel_art_txr, 
+        txtr.img,
         ((this.table[i] - 1) % 7) * 64, 
         0,
-        64,
-        64, 
+        txtr.crop_w,
+        txtr.crop_h,
         y * BLOCK_SIZE,
         x * BLOCK_SIZE,
         BLOCK_SIZE,

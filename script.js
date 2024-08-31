@@ -1,27 +1,26 @@
 import {Shape} from "./shape.js";
 import {FPS, FPS_INTERVAL, LEVEL_FPS, LEVEL_FPS_INTERVAL, C_W, C_H, ROWS, COLS, BLOCK_SIZE} from "./settings.js";
 import {Game} from "./game.js";
+import {Texture, IsoBlockTexture} from "./utils.js"
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
-// this two ctxs are for debugging the table at different states at the same time
-// const canvas2 = document.getElementById('canvas2');
-// const ctx2 = canvas2.getContext('2d');
-// const canvas3 = document.getElementById('canvas3');
-// const ctx3 = canvas3.getContext('2d');
+const textures = {
+  pixel: new Texture('./assets/square2.png', 64, 64),
+  iso3: new IsoBlockTexture('./assets/iso-assets3.png', 243, 282, 69, 6),
+  iso4: new IsoBlockTexture('./assets/iso-assets4.png', 250, 300, 70, 7.5),
+};
 
-const pixel_art_txr = new Image();
-const isometric_txr = new Image();
-pixel_art_txr.src = "./assets/square2.png";
-isometric_txr.src = "./assets/iso-assets4.png";
-
-const game = new Game(ctx, canvas, pixel_art_txr, isometric_txr);
+const game = new Game(ctx, canvas, textures);
 
 const debug_btn = document.getElementById('debug_btn');
 const iso_btn = document.getElementById('iso_btn');
 debug_btn.onclick = () => game.debug_mode = !game.debug_mode;
 iso_btn.onclick = () => game.iso_mode = !game.iso_mode;
+
+
+game.start();
 
 document.addEventListener('keydown', (e)=>{
   switch(e.key){
@@ -67,5 +66,3 @@ document.addEventListener('keyup', (e)=>{
   }
 });
 
-
-game.start();
