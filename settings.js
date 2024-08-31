@@ -7,14 +7,14 @@ export const BLOCK_SIZE = 25;
 export const C_W = canvas.width;
 export const C_H = canvas.height;
 
-export const FPS = 10;
+export const FPS = 15;
 export const FPS_INTERVAL = 1000 / FPS;
 
 export const LEVEL_FPS = 5; 
 export const LEVEL_FPS_INTERVAL = 1000 / LEVEL_FPS;
 
 // JLOSZIT
-export const SHAPE_TYPES = 'IO';  
+export const SHAPE_TYPES = 'JLOSZIT';  
 
 export const DEBUG_FONT = 'sans-serif';
 export const DEBUG_FONT_SIZE = 10;
